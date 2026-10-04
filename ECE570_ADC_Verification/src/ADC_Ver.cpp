@@ -3,10 +3,11 @@
 // ;--------------------------------------------
 // ; Program Detail:
 // ;--------------------------------------------
-// ; Purpose:
-// ; Inputs:
-// ; Outputs:
-// ; Date: 
+// ; Purpose: The purpose of this program is to validate the ADC that is on the ESP8266 devopment board to ensure it is 
+// ; appropriet for the discharging and charging expirement. 
+// ; Inputs: ADC (0) - Voltage Input
+// ; Outputs: Battery Voltage terminal output
+// ; Date: 10/04/2026
 // ; Compiler: VS Code with PlatformIO
 // ; Author: Alexandria Walker
 // ; Versions:
@@ -21,17 +22,22 @@
 
 #include <Arduino.h>
 
+// ; -------------------------------------------
+// ; Program Variables
+// ; -------------------------------------------
 
 const int           NUM_SAMPLES = 20;
 const unsigned long INTERVAL_MS = 30000;   // 30 seconds
-
 const float R_TOP            = 100000.0;   // external top resistor (ohms)
 const float R_BOTTOM         = 100000.0;   // external bottom resistor (ohms)
 const float R_ONBOARD_TOP    = 220000.0;   // NodeMCU onboard divider
 const float R_ONBOARD_BOTTOM = 100000.0;
+const float CAL = 3.22 / 3.400;   // Offset Correction
 
+// ;--------------------------------------------
+// ; Main Program
+// ;--------------------------------------------
 
-const float CAL = 3.22 / 3.400;   // = 0.947, for THIS board only
 
 // ADC pin voltage -> Battery voltage math
 float batteryScale() {
