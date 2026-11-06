@@ -1,51 +1,38 @@
 <?php
-// connect to the database
+// connection to the database
 $servername = "localhost";
 $username = "u223090689_db_AlexWalker";
-$password = "PASSWORD";   // <-- put your real password here
+$password = "ECE570iot";  
 $dbname = "u223090689_AlexWalker";
-
+// If connection fails
 $conn = new mysqli($servername, $username, $password, $dbname);
 if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-// ---------- ADDED (3.3 Q3 and the graph): send one node's data as JSON ----------
-// Example: assignment4.php?json=node_1
-// The graph asks for this JSON. Only the JSON is printed, then the page stops.
+// Displays the JSON file that is queried
 if (isset($_GET['json'])) {
   $jsonNode = $conn->real_escape_string($_GET['json']);
   $resultJson = $conn->query("SELECT node_name, time_received, temperature, humidity FROM sensor_data WHERE node_name = '$jsonNode' ORDER BY time_received");
-
-  // put every row into one list
   $rows = array();
   while ($row = $resultJson->fetch_assoc()) {
     $rows[] = $row;
   }
-
   header('Content-Type: application/json');
   echo json_encode($rows);
   exit;
 }
-// ---------- END ADDED ----------
 
-// ---------- ADDED (3.3 Q4): BASE64 message ----------
-// Example: assignment4.php?bm9kZUlkPW5vZGVfMSZub2RlVGVtcD0zNCZub2RlSHVtaWQ9NTU=
-// If the URL has no normal keys, decode it. After decoding we have the same text
-// as a normal URL (nodeId=node_1&nodeTemp=34&...) and parse_str splits it into $params.
+
+// Base64 decoding section
 $params = $_GET;
 $rawQuery = $_SERVER['QUERY_STRING'];
 if ($rawQuery != "" && !isset($_GET['nodeId']) && !isset($_GET['nodeTemp']) && !isset($_GET['nodeHumid']) && !isset($_GET['view'])) {
   $decoded = base64_decode(rawurldecode($rawQuery));
   parse_str($decoded, $params);
 }
-// ---------- END ADDED ----------
 
-// ---------- insert data sent in the URL (GET) ----------
-// Example: assignment4.php?nodeId=node_1&nodeTemp=34&nodeHumid=55
-// If timeReceived is not in the URL, the database stamps the time.
-
-// accepted ranges (set these to your Section 1.2 constraints)
+// Parameters accepted in the URL
 $TEMP_MIN = -10;  $TEMP_MAX = 100;
 $HUMID_MIN = 0;  $HUMID_MAX = 100;
 
@@ -54,8 +41,7 @@ $message = "";
 // only run if the URL contains a node or a temperature
 if (isset($params['nodeId']) || isset($params['nodeTemp'])) {
 
-  // create a variable for each key (escape_string makes the text safe to use in SQL)
-  // if a key is missing from the URL we use an empty value, and the checks below reject it
+  // if a key is missing from the URL, use an empty value, and the checks below reject it
   if (isset($params['nodeId'])) {
     $varId = $conn->real_escape_string($params['nodeId']);
   } else {
@@ -69,14 +55,14 @@ if (isset($params['nodeId']) || isset($params['nodeTemp'])) {
     $varTemp = "";
   }
 
-  // humidity is required (the table does not allow it to be empty)
+  // humidity is required
   if (isset($params['nodeHumid'])) {
     $varHumid = $params['nodeHumid'];
   } else {
     $varHumid = "";
   }
 
-  // use the time from the URL, or ask the database for the current time
+  // use the time from the URL, or use the database for the current time
   if (isset($params['timeReceived'])) {
     $varTime = $conn->real_escape_string($params['timeReceived']);
   } else {
@@ -84,7 +70,7 @@ if (isset($params['nodeId']) || isset($params['nodeTemp'])) {
     $varTime = $row[0];
   }
 
-  // is the node registered?
+  // Making sure the node is registered
   $registered = $conn->query("SELECT * FROM sensor_register WHERE node_name = '$varId'");
 
   // check everything; only insert if every check passes
@@ -97,7 +83,7 @@ if (isset($params['nodeId']) || isset($params['nodeTemp'])) {
   } elseif ($registered->num_rows == 0) {
     $message = "Error: this node is not registered. Data not accepted.";
   } else {
-    // everything is valid so far - has this node already sent data at this exact time?
+    // everything is valid so far - check where time comes from
     $duplicate = $conn->query("SELECT * FROM sensor_data WHERE node_name = '$varId' AND time_received = '$varTime'");
     if ($duplicate->num_rows > 0) {
       $message = "Error: this node already has data for that exact time. Data not accepted.";
@@ -112,27 +98,24 @@ if (isset($params['nodeId']) || isset($params['nodeTemp'])) {
     }
   }
 }
-// ---------- END insert ----------
 
-// get the registered nodes (sorted by name)
+
+// get the registered nodes, sorted by name
 $sql1 = "SELECT * FROM sensor_register ORDER BY node_name";
 $result1 = $conn->query($sql1);
 
-// get the sensor data (sorted by node name, then time)
+// get the sensor data, first sorted by node name, then by time
 $sql2 = "SELECT * FROM sensor_data ORDER BY node_name, time_received";
 $result2 = $conn->query($sql2);
 
-// ---------- ADDED (3.2): which node is chosen in the pull down menu? ----------
-// The menu sends ?view=node_2. If nothing was chosen, use the node that was just
-// inserted. If that is not there either, use the first registered node.
+// Pull Down Menu for averages, max, min, and graph
 $selected = "";
 if (isset($_GET['view'])) {
   $selected = $conn->real_escape_string($_GET['view']);
 } elseif (isset($params['nodeId'])) {
   $selected = $conn->real_escape_string($params['nodeId']);
 }
-
-// is the chosen node registered? if not, use the first registered node
+// defaults to the node in which in the URL
 $check = $conn->query("SELECT * FROM sensor_register WHERE node_name = '$selected'");
 if ($check->num_rows == 0) {
   $first = $conn->query("SELECT node_name FROM sensor_register ORDER BY node_name LIMIT 1")->fetch_row();
@@ -142,19 +125,18 @@ if ($check->num_rows == 0) {
 // list of nodes for the pull down menu
 $result4 = $conn->query("SELECT node_name FROM sensor_register ORDER BY node_name");
 
-// ADDED (3.1): average temperature, average humidity, max temperature and
-// minimum humidity for the chosen node (no data gives empty values)
+// Average, Min, Max 
 $sql3 = "SELECT AVG(temperature) AS avg_temp, AVG(humidity) AS avg_humid,
                 MAX(temperature) AS max_temp, MIN(humidity) AS min_humid
          FROM sensor_data
          WHERE node_name = '$selected'";
 $stats = $conn->query($sql3)->fetch_assoc();
-// ---------- END ADDED ----------
 ?>
 
+<!-- HTML for the tables -->
 <html>
 <head>
-  <title>SSU IoT Lab</title>
+  <title>Assignment 4 Part 2</title>
   <style>
     body { text-align: center; font-family: Arial; }
     table { margin: auto; border-collapse: collapse; }
@@ -167,6 +149,7 @@ $stats = $conn->query($sql3)->fetch_assoc();
 
 <h1>Assignment 4 PHP & Databasing</h1>
 
+<!-- This will list if the data was successfully put in the table, or if it was rejected -->
 <?php if ($message !== "") { echo "<p><b>" . $message . "</b></p>"; } ?>
 
 <h3>Registered Sensor Nodes</h3>
@@ -209,7 +192,7 @@ $stats = $conn->query($sql3)->fetch_assoc();
   ?>
 </table>
 
-<!-- ADDED (3.2): pull down menu. Picking a node reloads the page with ?view=node_name -->
+<!-- The pull down menu on the website itself -->
 <h3>Select a Node</h3>
 <form method="get">
   <select name="view" onchange="this.form.submit()">
@@ -226,7 +209,7 @@ $stats = $conn->query($sql3)->fetch_assoc();
 </form>
 
 <?php
-// ADDED (3.1): statistics for the chosen node
+// Displaying the average, min and max of the node that is selected
 if ($stats['avg_temp'] !== null) {
   echo "<p>The Average Temperature for " . $selected . " has been: " . round($stats['avg_temp'], 2) . " F<br>";
   echo "The Average Humidity for " . $selected . " has been: " . round($stats['avg_humid'], 2) . " %<br>";
@@ -237,38 +220,38 @@ if ($stats['avg_temp'] !== null) {
 }
 ?>
 
-<!-- ADDED (3.1): the graph -->
+<!-- The ChartJS section -->
 <div id="chart-container">
   <canvas id="mycanvas"></canvas>
 </div>
 
-<!-- jQuery and Chart.js must come before our own code -->
+<!-- jQuery and Chart.js must come first -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
 <script>
-// the node chosen in the pull down menu (PHP fills this in)
+// the node chosen in the pull down menu gets put here
 var node = "<?php echo $selected; ?>";
 
+// Pulling the info from the json
 $(document).ready(function(){
   $.ajax({
-    url: "?json=" + node,   // this same page, asking for JSON (see the top of the file)
+    url: "?json=" + node,
     method: "GET",
     success: function(data) {
       var x_axis = [];
       var y_axis = [];
-
+// graph parameters
       for (var i in data) {
-        x_axis.push(data[i].time_received);   // must match the database columns
+        x_axis.push(data[i].time_received);
         y_axis.push(data[i].temperature);
       }
-
+// Chart colors
       var chartdata = {
         labels: x_axis,
         datasets: [
           {
             label: 'Temperature',
-            // 3.3 Q2: change these four rgba(...) values to a green such as rgba(0, 160, 0, 0.75)
-            backgroundColor: 'rgba(200, 200, 200, 0.75)',
+            backgroundColor: 'rgba(0, 126, 8, 1)',
             borderColor: 'rgba(200, 200, 200, 0.75)',
             hoverBackgroundColor: 'rgba(200, 200, 200, 1)',
             hoverBorderColor: 'rgba(200, 200, 200, 1)',
@@ -278,9 +261,9 @@ $(document).ready(function(){
       };
 
       var ctx = $("#mycanvas");
-
+// The graph section
       var barGraph = new Chart(ctx, {
-        type: 'bar',   // 3.3 Q1: change 'bar' to 'line'
+        type: 'bar',
         data: chartdata,
         options: {
           plugins: {
