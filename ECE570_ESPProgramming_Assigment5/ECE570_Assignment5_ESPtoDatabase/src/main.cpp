@@ -33,8 +33,8 @@
 // ; -------------------------------------------
 // ; WiFi Connection
 // ; -------------------------------------------
-const char* ssid = "Alex's pocket computer";
-const char* password = "ECE570iot";
+const char* ssid = "HOTSPOT";
+const char* password = "PASSWORD";
 
 // ; -------------------------------------------
 // ; PHP URL Connection
