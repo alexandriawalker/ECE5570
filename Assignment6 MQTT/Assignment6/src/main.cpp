@@ -33,7 +33,7 @@
 // ; WiFi Connection
 // ; -------------------------------------------
 const char* ssid = "ECE570";
-const char* password = "ECE570iot";
+const char* password = "PASSWORD";
 
 // ; -------------------------------------------
 // ; MQTT Broker Connection
@@ -41,7 +41,7 @@ const char* password = "ECE570iot";
 const char* mqttServer = "ece570-iot-aw-2cb59fde.a02.usw2.aws.hivemq.cloud";   
 const int   mqttPort   = 8883;                       
 const char* mqttUser   = "AWECE570iot";     
-const char* mqttPass   = "ECE570iot";    
+const char* mqttPass   = "PASSWORD";    
 
 // ; -------------------------------------------
 // ; MQTT Topics  (change AW01 to your unique code)
