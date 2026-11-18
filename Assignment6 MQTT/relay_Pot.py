@@ -16,14 +16,14 @@ import mysql.connector
 BROKER_URL = "ece570-iot-aw-2cb59fde.a02.usw2.aws.hivemq.cloud"   # HiveMQ Cloud cluster (host only)
 BROKER_PORT = 8883                      # secure MQTT (TLS)
 MQTT_USER = "AWECE570iot"      # from cluster -> Access Management
-MQTT_PASS = "ECE570iot"      # (NOT your HiveMQ account login)
+MQTT_PASS = "PASSWORD"      # (NOT your HiveMQ account login)
 TOPIC = "testtopic/temp/outTopic/AW_4"  # must match potTopic in the ESP code
 
 # ---------------- Database settings ----------------
 # Hostinger: hPanel -> Databases -> Remote MySQL, add this computer's IP first.
 HOST = "31.97.208.95"       # Hostinger database IP / hostname
 USER = "u223090689_db_AlexWalker"
-PASSWORD = "ECE570iot"
+PASSWORD = "PASSWORD"
 DATABASE = "u223090689_AlexWalker"
 
 
